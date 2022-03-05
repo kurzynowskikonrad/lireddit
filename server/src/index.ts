@@ -1,6 +1,6 @@
 import 'reflect-metadata'
 import { MikroORM } from '@mikro-orm/core'
-import { COOKIE_NAME, secret, __prod__ } from './constants'
+import { __prod__ } from './constants'
 import microConfig from './mikro-orm.config'
 import express from 'express'
 import { ApolloServer } from 'apollo-server-express'
@@ -15,6 +15,9 @@ import pgConfig from './pg.config'
 import connectPg from 'connect-pg-simple'
 import pg from 'pg'
 import cors from 'cors'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const main = async () => {
 	const orm = await MikroORM.init(microConfig)
@@ -34,7 +37,7 @@ const main = async () => {
 
 	app.use(
 		session({
-			name: COOKIE_NAME,
+			name: process.env.COOKIE_NAME,
 			store: new pgStore({
 				pool: pgPool,
 				tableName: 'user_sessions',
@@ -48,7 +51,7 @@ const main = async () => {
 				secure: __prod__, //cookie only works in https
 			},
 			saveUninitialized: false,
-			secret: secret,
+			secret: process.env.SECRET as string | string[],
 			resave: false,
 		})
 	)

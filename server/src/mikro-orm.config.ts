@@ -1,8 +1,11 @@
 import { MikroORM } from '@mikro-orm/core'
-import { password, port, __prod__ } from './constants'
+import { __prod__ } from './constants'
 import { Post } from './entities/Post'
 import path from 'path'
 import { User } from './entities/User'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 export default {
 	migrations: {
@@ -11,8 +14,8 @@ export default {
 	},
 	entities: [Post, User],
 	dbName: 'lireddit',
-	password: password,
-	port: port,
+	password: process.env.PASSWORD as string,
+	port: process.env.PORT as unknown as number,
 	type: 'postgresql',
 	debug: !__prod__,
 	allowGlobalContext: true, // quick-fix to validation error

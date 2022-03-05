@@ -11,7 +11,6 @@ import {
 } from 'type-graphql'
 import argon2 from 'argon2'
 import { EntityManager } from '@mikro-orm/postgresql'
-import { COOKIE_NAME } from '../constants'
 import { UsernamePasswordInput } from './UsernamePasswordInput'
 import { validateRegister } from '../utils/validateRegister'
 
@@ -147,7 +146,7 @@ export class UserResolver {
 	logout(@Ctx() { req, res }: MyContextType) {
 		return new Promise((resolve) =>
 			req.session.destroy((err) => {
-				res.clearCookie(COOKIE_NAME)
+				res.clearCookie(process.env.COOKIE_NAME as string)
 				if (err) {
 					console.log(err)
 					resolve(false)
