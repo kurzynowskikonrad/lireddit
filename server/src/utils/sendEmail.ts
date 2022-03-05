@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 import internal from 'stream'
 
+// test
 // async..await is not allowed in global scope, must use a wrapper
 export async function sendEmail(
 	to: string | string[] | undefined,
