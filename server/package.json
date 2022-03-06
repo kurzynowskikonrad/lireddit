@@ -38,7 +38,8 @@
 		"nodemailer": "^6.7.2",
 		"pg": "^8.7.3",
 		"reflect-metadata": "^0.1.13",
-		"type-graphql": "^1.1.1"
+		"type-graphql": "^1.1.1",
+		"uuid": "^8.3.2"
 	},
 	"mikro-orm": {
 		"useTsNode": true,
