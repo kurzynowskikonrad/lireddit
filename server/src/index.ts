@@ -1,7 +1,5 @@
 import 'reflect-metadata'
-import { MikroORM } from '@mikro-orm/core'
 import { __prod__ } from './constants'
-import microConfig from './mikro-orm.config'
 import express from 'express'
 import { ApolloServer } from 'apollo-server-express'
 import { ApolloServerPluginLandingPageGraphQLPlayground } from 'apollo-server-core'
@@ -16,12 +14,26 @@ import connectPg from 'connect-pg-simple'
 import pg from 'pg'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import { createConnection } from 'typeorm'
+import { Post } from './entities/Post'
+import { User } from './entities/User'
+import path from 'path'
 
 dotenv.config()
 
 const main = async () => {
-	const orm = await MikroORM.init(microConfig)
-	orm.getMigrator().up()
+	const conn = await createConnection({
+		type: 'postgres',
+		database: 'lireddit2',
+		username: 'postgres',
+		password: process.env.PASSWORD as string,
+		port: process.env.PORT as unknown as number,
+		logging: true,
+		synchronize: true,
+		migrations: [path.join(__dirname, './migrations/*')],
+		entities: [Post, User],
+	})
+	await conn.runMigrations()
 
 	const app = express()
 
@@ -62,7 +74,7 @@ const main = async () => {
 			validate: false,
 		}),
 		plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
-		context: ({ req, res }): MyContextType => ({ em: orm.em, req, res }),
+		context: ({ req, res }): MyContextType => ({ req, res }),
 	})
 
 	await apolloServer.start()
