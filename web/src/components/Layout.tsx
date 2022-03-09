@@ -1,4 +1,5 @@
 import React from 'react'
+import { DarkModeSwitch } from './DarkModeSwitch'
 import { NavBar } from './NavBar'
 import { Wrapper, WrapperVariant } from './Wrapper'
 
@@ -11,6 +12,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, variant }) => {
 		<>
 			<NavBar />
 			<Wrapper variant={variant}>{children}</Wrapper>
+			<DarkModeSwitch />
 		</>
 	)
 }
