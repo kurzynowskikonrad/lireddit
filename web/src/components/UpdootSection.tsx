@@ -13,8 +13,12 @@ export const UpdootSection: React.FC<UpdootSectionProps> = ({ post }) => {
 		<Flex direction='column' justifyContent='center' alignItems='center' mr={4}>
 			<IconButton
 				colorScheme='teal'
+				variant={post.voteStatus === 1 ? undefined : 'ghost'}
 				aria-label='upVote post'
 				onClick={async () => {
+					if (post.voteStatus === 1) {
+						return
+					}
 					await vote({
 						postId: post.id,
 						value: 1,
@@ -24,9 +28,13 @@ export const UpdootSection: React.FC<UpdootSectionProps> = ({ post }) => {
 			/>
 			{post.points}
 			<IconButton
-				colorScheme='teal'
+				colorScheme='orange'
+				variant={post.voteStatus === -1 ? undefined : 'ghost'}
 				aria-label='downVote post'
 				onClick={async () => {
+					if (post.voteStatus === -1) {
+						return
+					}
 					await vote({
 						postId: post.id,
 						value: -1,

@@ -16,6 +16,7 @@ import {
 } from '../generated/graphql'
 import { betterUpdateQuery } from './betterUpdateQuery'
 import { gql } from '@urql/core'
+import { isServer } from './isServer'
 
 const errorExchange: Exchange =
 	({ forward }) =>
@@ -117,112 +118,129 @@ export const cursorPagination = (): Resolver => {
 	// }
 }
 
-export const createUrqlClient = (ssrExchange: any) => ({
-	// ...add your Client options here
-	url: 'http://localhost:4000/graphql',
-	fetchOptions: {
-		credentials: 'include' as const,
-	},
-	exchanges: [
-		dedupExchange,
-		cacheExchange({
-			keys: {
-				PaginatedPosts: () => null,
-			},
-			resolvers: {
-				Query: {
-					posts: cursorPagination(),
+export const createUrqlClient = (ssrExchange: any, ctx: any) => {
+	let cookie = ''
+	if (isServer()) {
+		cookie = ctx.req.headers.cookie
+	}
+	return {
+		// ...add your Client options here
+		url: 'http://localhost:4000/graphql',
+		fetchOptions: {
+			credentials: 'include' as const,
+			headers: cookie
+				? {
+						cookie,
+				  }
+				: undefined,
+		},
+		exchanges: [
+			dedupExchange,
+			cacheExchange({
+				keys: {
+					PaginatedPosts: () => null,
 				},
-			},
-			updates: {
-				Mutation: {
-					vote: (_result, args, cache, info) => {
-						const { postId, value } = args
-						const data = cache.readFragment(
-							gql`
-								fragment _ on Post {
-									id
-									points
-								}
-							`,
-							{ id: postId }
-						)
-						console.log('data: ', data)
-						if (data) {
-							const newPoints = data.points + value
-							cache.writeFragment(
+				resolvers: {
+					Query: {
+						posts: cursorPagination(),
+					},
+				},
+				updates: {
+					Mutation: {
+						vote: (_result, args, cache, info) => {
+							const { postId, value } = args
+							const data = cache.readFragment(
 								gql`
 									fragment _ on Post {
+										id
 										points
+										voteStatus
 									}
 								`,
-								{ id: postId, points: newPoints } as any
+								{ id: postId }
 							)
-						}
-					},
-					createPost: (_result, args, cache, info) => {
-						// console.log('start')
-						// console.log(cache.inspectFields('Query'))
-						const allFields = cache.inspectFields('Query')
-						const fieldInfos = allFields.filter(
-							(info) => info.fieldName === 'posts'
-						)
-						fieldInfos.forEach((fi) => {
-							cache.invalidate('Query', 'posts', fi.arguments)
-						})
-						// cache.invalidate('Query', 'posts', {
-						// 	limit: 33, // limit needs to match limit defined in web/src/pages/index.tsx
-						// })
-						// console.log(cache.inspectFields('Query'))
-						// console.log('end')
-					},
-					logout: (_result, args, cache, info) => {
-						betterUpdateQuery<LogoutMutation, MeQuery>(
-							cache,
-							{ query: MeDocument },
-							_result,
-							() => ({ me: null })
-						)
-					},
-					login: (_result, args, cache, info) => {
-						// cache.updateQuery({ query: MeDocument }, (data: MeQuery) => { })
-						betterUpdateQuery<LoginMutation, MeQuery>(
-							cache,
-							{ query: MeDocument },
-							_result,
-							(result, query) => {
-								if (result.login.errors) {
-									return query
-								} else {
-									return {
-										me: result.login.user,
+							console.log('data: ', data)
+							if (data) {
+								if (data.voteStatus === value) {
+									return
+								}
+								const newPoints =
+									data.points + (!data.voteStatus ? 1 : 2) * (value as number)
+								cache.writeFragment(
+									gql`
+										fragment _ on Post {
+											points
+											voteStatus
+										}
+									`,
+									{ id: postId, points: newPoints, voteStatus: value }
+								)
+							}
+						},
+						createPost: (_result, args, cache, info) => {
+							// console.log('start')
+							// console.log(cache.inspectFields('Query'))
+							const allFields = cache.inspectFields('Query')
+							const fieldInfos = allFields.filter(
+								(info) => info.fieldName === 'posts'
+							)
+							fieldInfos.forEach((fi) => {
+								cache.invalidate('Query', 'posts', fi.arguments)
+							})
+							// cache.invalidate('Query', 'posts', {
+							// 	limit: 33, // limit needs to match limit defined in web/src/pages/index.tsx
+							// })
+							// console.log(cache.inspectFields('Query'))
+							// console.log('end')
+						},
+						logout: (_result, args, cache, info) => {
+							betterUpdateQuery<LogoutMutation, MeQuery>(
+								cache,
+								{ query: MeDocument },
+								_result,
+								() => ({ me: null })
+							)
+						},
+						login: (_result, args, cache, info) => {
+							// cache.updateQuery({ query: MeDocument }, (data: MeQuery) => { })
+							betterUpdateQuery<LoginMutation, MeQuery>(
+								cache,
+								{ query: MeDocument },
+								_result,
+								(result, query) => {
+									if (result.login.errors) {
+										return query
+									} else {
+										return {
+											me: result.login.user,
+										}
 									}
 								}
-							}
-						)
-					},
-					register: (_result, args, cache, info) => {
-						// cache.updateQuery({ query: MeDocument }, (data: MeQuery) => { })
-						betterUpdateQuery<RegisterMutation, MeQuery>(
-							cache,
-							{ query: MeDocument },
-							_result,
-							(result, query) => {
-								if (result.register.errors) {
-									return query
-								} else {
-									return {
-										me: result.register.user,
+							)
+						},
+						register: (_result, args, cache, info) => {
+							// cache.updateQuery({ query: MeDocument }, (data: MeQuery) => { })
+							betterUpdateQuery<RegisterMutation, MeQuery>(
+								cache,
+								{ query: MeDocument },
+								_result,
+								(result, query) => {
+									if (result.register.errors) {
+										return query
+									} else {
+										return {
+											me: result.register.user,
+										}
 									}
 								}
-							}
-						)
+							)
+						},
 					},
 				},
-			},
-		}),
-		errorExchange,
-		ssrExchange,
-		fetchExchange,
-	],
-})
+			}),
+			errorExchange,
+			ssrExchange,
+			fetchExchange,
+		],
+	}
+}
