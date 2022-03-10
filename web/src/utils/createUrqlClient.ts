@@ -15,6 +15,7 @@ import {
 	RegisterMutation,
 } from '../generated/graphql'
 import { betterUpdateQuery } from './betterUpdateQuery'
+import { gql } from '@urql/core'
 
 const errorExchange: Exchange =
 	({ forward }) =>
@@ -34,7 +35,6 @@ const errorExchange: Exchange =
 export const cursorPagination = (): Resolver => {
 	return (_parent, fieldArgs, cache, info) => {
 		const { parentKey: entityKey, fieldName } = info
-
 		const allFields = cache.inspectFields(entityKey)
 		const fieldInfos = allFields.filter((info) => info.fieldName === fieldName)
 		const size = fieldInfos.length
@@ -136,6 +136,46 @@ export const createUrqlClient = (ssrExchange: any) => ({
 			},
 			updates: {
 				Mutation: {
+					vote: (_result, args, cache, info) => {
+						const { postId, value } = args
+						const data = cache.readFragment(
+							gql`
+								fragment _ on Post {
+									id
+									points
+								}
+							`,
+							{ id: postId }
+						)
+						console.log('data: ', data)
+						if (data) {
+							const newPoints = data.points + value
+							cache.writeFragment(
+								gql`
+									fragment _ on Post {
+										points
+									}
+								`,
+								{ id: postId, points: newPoints } as any
+							)
+						}
+					},
+					createPost: (_result, args, cache, info) => {
+						// console.log('start')
+						// console.log(cache.inspectFields('Query'))
+						const allFields = cache.inspectFields('Query')
+						const fieldInfos = allFields.filter(
+							(info) => info.fieldName === 'posts'
+						)
+						fieldInfos.forEach((fi) => {
+							cache.invalidate('Query', 'posts', fi.arguments)
+						})
+						// cache.invalidate('Query', 'posts', {
+						// 	limit: 33, // limit needs to match limit defined in web/src/pages/index.tsx
+						// })
+						// console.log(cache.inspectFields('Query'))
+						// console.log('end')
+					},
 					logout: (_result, args, cache, info) => {
 						betterUpdateQuery<LogoutMutation, MeQuery>(
 							cache,
