@@ -8,6 +8,7 @@ import {
 } from 'urql'
 import { pipe, tap } from 'wonka'
 import {
+	DeletePostMutationVariables,
 	LoginMutation,
 	LogoutMutation,
 	MeDocument,
@@ -63,68 +64,14 @@ export const cursorPagination = (): Resolver => {
 
 		return { __typename: 'PaginatedPosts', hasMore, posts: results }
 	}
-
-	// 	const visited = new Set()
-	// 	let result: NullArray<string> = []
-	// 	let prevOffset: number | null = null
-
-	// 	for (let i = 0; i < size; i++) {
-	// 		const { fieldKey, arguments: args } = fieldInfos[i]
-	// 		if (args === null || !compareArgs(fieldArgs, args)) {
-	// 			continue
-	// 		}
-
-	// 		const links = cache.resolve(entityKey, fieldKey) as string[]
-	// 		const currentOffset = args[offsetArgument]
-
-	// 		if (
-	// 			links === null ||
-	// 			links.length === 0 ||
-	// 			typeof currentOffset !== 'number'
-	// 		) {
-	// 			continue
-	// 		}
-
-	// 		const tempResult: NullArray<string> = []
-
-	// 		for (let j = 0; j < links.length; j++) {
-	// 			const link = links[j]
-	// 			if (visited.has(link)) continue
-	// 			tempResult.push(link)
-	// 			visited.add(link)
-	// 		}
-
-	// 		if (
-	// 			(!prevOffset || currentOffset > prevOffset) ===
-	// 			(mergeMode === 'after')
-	// 		) {
-	// 			result = [...result, ...tempResult]
-	// 		} else {
-	// 			result = [...tempResult, ...result]
-	// 		}
-
-	// 		prevOffset = currentOffset
-	// 	}
-
-	// 	const hasCurrentPage = cache.resolve(entityKey, fieldName, fieldArgs)
-	// 	if (hasCurrentPage) {
-	// 		return result
-	// 	} else if (!(info as any).store.schema) {
-	// 		return undefined
-	// 	} else {
-	// 		info.partial = true
-	// 		return result
-	// 	}
-	// }
 }
 
 export const createUrqlClient = (ssrExchange: any, ctx: any) => {
 	let cookie = ''
 	if (isServer()) {
-		cookie = ctx.req.headers.cookie
+		cookie = ctx?.req?.headers?.cookie
 	}
 	return {
-		// ...add your Client options here
 		url: 'http://localhost:4000/graphql',
 		fetchOptions: {
 			credentials: 'include' as const,
@@ -147,6 +94,12 @@ export const createUrqlClient = (ssrExchange: any, ctx: any) => {
 				},
 				updates: {
 					Mutation: {
+						deletePost: (_result, args, cache, info) => {
+							cache.invalidate({
+								__typename: 'Post',
+								id: (args as DeletePostMutationVariables).id,
+							})
+						},
 						vote: (_result, args, cache, info) => {
 							const { postId, value } = args
 							const data = cache.readFragment(
@@ -178,8 +131,6 @@ export const createUrqlClient = (ssrExchange: any, ctx: any) => {
 							}
 						},
 						createPost: (_result, args, cache, info) => {
-							// console.log('start')
-							// console.log(cache.inspectFields('Query'))
 							const allFields = cache.inspectFields('Query')
 							const fieldInfos = allFields.filter(
 								(info) => info.fieldName === 'posts'
@@ -187,11 +138,6 @@ export const createUrqlClient = (ssrExchange: any, ctx: any) => {
 							fieldInfos.forEach((fi) => {
 								cache.invalidate('Query', 'posts', fi.arguments)
 							})
-							// cache.invalidate('Query', 'posts', {
-							// 	limit: 33, // limit needs to match limit defined in web/src/pages/index.tsx
-							// })
-							// console.log(cache.inspectFields('Query'))
-							// console.log('end')
 						},
 						logout: (_result, args, cache, info) => {
 							betterUpdateQuery<LogoutMutation, MeQuery>(
@@ -202,7 +148,6 @@ export const createUrqlClient = (ssrExchange: any, ctx: any) => {
 							)
 						},
 						login: (_result, args, cache, info) => {
-							// cache.updateQuery({ query: MeDocument }, (data: MeQuery) => { })
 							betterUpdateQuery<LoginMutation, MeQuery>(
 								cache,
 								{ query: MeDocument },
@@ -219,7 +164,6 @@ export const createUrqlClient = (ssrExchange: any, ctx: any) => {
 							)
 						},
 						register: (_result, args, cache, info) => {
-							// cache.updateQuery({ query: MeDocument }, (data: MeQuery) => { })
 							betterUpdateQuery<RegisterMutation, MeQuery>(
 								cache,
 								{ query: MeDocument },
